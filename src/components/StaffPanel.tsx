@@ -8,7 +8,7 @@ import { useStore } from '../context/StoreContext';
 import { OrderStatus, PaymentMethod, PaymentStatus, UserRole } from '../types';
 import { 
   ClipboardList, CheckCircle, Flame, AlertTriangle, RefreshCcw, Landmark, 
-  Trash2, Search, Sparkles, Plus, Minus, Check, X, Bell 
+  Trash2, Search, Sparkles, Plus, Minus, Check, X, Bell, Receipt
 } from 'lucide-react';
 
 export const StaffPanel: React.FC = () => {

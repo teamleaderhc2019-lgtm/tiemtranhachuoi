@@ -14,6 +14,8 @@ import {
 import { 
   encryptData, decryptData, calculateChecksum, hasRequiredPrivilege 
 } from '../utils/security';
+import { supabase } from '../utils/supabase';
+
 
 interface StoreContextType {
   ingredients: Ingredient[];
@@ -84,17 +86,268 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadDatabase();
   }, []);
 
-  const loadDatabase = () => {
+  const populateSupabaseDefaults = async () => {
+    if (!supabase) return;
+    try {
+      // 1. Ingredients
+      await supabase.from('ingredients').insert(
+        INITIAL_INGREDIENTS.map(item => ({
+          id: item.id,
+          name: item.name,
+          current_stock: item.currentStock,
+          min_stock: item.minStock,
+          unit: item.unit,
+          unit_cost: item.unitCost
+        }))
+      );
+      
+      // 2. Menu
+      await supabase.from('menu').insert(
+        INITIAL_MENU.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          category: item.category,
+          image_url: item.imageUrl,
+          recipe: item.recipe,
+          available: item.available,
+          description: item.description
+        }))
+      );
+
+      // 3. Customers
+      await supabase.from('customers').insert(
+        INITIAL_CUSTOMERS.map(item => ({
+          phone: item.phone,
+          name: item.name,
+          email: item.email,
+          points: item.points,
+          tier: item.tier,
+          total_spent: item.totalSpent,
+          created_at: item.createdAt
+        }))
+      );
+
+      // 4. Orders
+      await supabase.from('orders').insert(
+        INITIAL_ORDERS.map(item => ({
+          id: item.id,
+          customer_phone: item.customerPhone,
+          customer_name: item.customerName,
+          items: item.items,
+          subtotal: item.subtotal,
+          discount: item.discount,
+          total: item.total,
+          payment_method: item.paymentMethod,
+          payment_status: item.paymentStatus,
+          status: item.status,
+          points_earned: item.pointsEarned,
+          created_at: item.createdAt,
+          role_placed: item.rolePlaced,
+          is_offline_created: item.isOfflineCreated || false
+        }))
+      );
+
+      // 5. Promotions
+      await supabase.from('promotions').insert(
+        INITIAL_PROMOTIONS.map(item => ({
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          code: item.code,
+          discount_percent: item.discountPercent,
+          active: item.active,
+          expiry_date: item.expiryDate
+        }))
+      );
+
+      // 6. Security Logs
+      const initLog = {
+        id: 'log_001',
+        timestamp: new Date().toISOString(),
+        user_id: 'SYSTEM',
+        role: UserRole.ADMIN,
+        action: 'INITIALIZE',
+        details: 'Hệ thống bảo mật cơ sở dữ liệu trà sữa khởi tạo hoàn tất.',
+        ip_address: '127.0.0.1 (Local)',
+        integrity_verified: true
+      };
+      await supabase.from('security_logs').insert([initLog]);
+
+    } catch (e) {
+      console.error("Error populating Supabase defaults", e);
+    }
+  };
+
+  const loadDatabase = async () => {
     try {
       setIsTampered(false);
       setTamperMessage('');
 
-      // Check for security integrity across storage items
+      // Check if we can connect to Supabase
+      if (supabase && !isOffline) {
+        try {
+          // Attempt loading from Supabase
+          const { data: dbIngredients, error: ingError } = await supabase
+            .from('ingredients')
+            .select('*')
+            .order('id', { ascending: true });
+          
+          const { data: dbMenu, error: menuError } = await supabase
+            .from('menu')
+            .select('*')
+            .order('id', { ascending: true });
+
+          const { data: dbCustomers, error: custError } = await supabase
+            .from('customers')
+            .select('*')
+            .order('phone', { ascending: true });
+
+          const { data: dbOrders, error: ordError } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          const { data: dbPromotions, error: promoError } = await supabase
+            .from('promotions')
+            .select('*')
+            .order('id', { ascending: true });
+
+          const { data: dbSecurity, error: secError } = await supabase
+            .from('security_logs')
+            .select('*')
+            .order('timestamp', { ascending: false });
+
+          if (!ingError && !menuError && !custError && !ordError && !promoError && !secError) {
+            let mappedIngredients = INITIAL_INGREDIENTS;
+            if (dbIngredients && dbIngredients.length > 0) {
+              mappedIngredients = dbIngredients.map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                currentStock: item.current_stock,
+                minStock: item.min_stock,
+                unit: item.unit,
+                unitCost: item.unit_cost
+              }));
+            } else {
+              // Populate Supabase if empty!
+              await populateSupabaseDefaults();
+              // Reload immediately after populating
+              setTimeout(() => { loadDatabase(); }, 500);
+              return;
+            }
+
+            let mappedMenu = INITIAL_MENU;
+            if (dbMenu && dbMenu.length > 0) {
+              mappedMenu = dbMenu.map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                category: item.category,
+                imageUrl: item.image_url || '',
+                recipe: item.recipe,
+                available: item.available,
+                description: item.description || ''
+              }));
+            }
+
+            let mappedCustomers = INITIAL_CUSTOMERS;
+            if (dbCustomers && dbCustomers.length > 0) {
+              mappedCustomers = dbCustomers.map((item: any) => ({
+                phone: item.phone,
+                name: item.name,
+                email: item.email || undefined,
+                points: item.points,
+                tier: item.tier as MembershipTier,
+                totalSpent: item.total_spent,
+                createdAt: item.created_at
+              }));
+            }
+
+            let mappedOrders: Order[] = INITIAL_ORDERS;
+            if (dbOrders && dbOrders.length > 0) {
+              mappedOrders = dbOrders.map((item: any) => ({
+                id: item.id,
+                customerPhone: item.customer_phone || undefined,
+                customerName: item.customer_name || undefined,
+                items: item.items,
+                subtotal: item.subtotal,
+                discount: item.discount,
+                total: item.total,
+                paymentMethod: item.payment_method as PaymentMethod,
+                paymentStatus: item.payment_status as PaymentStatus,
+                status: item.status as OrderStatus,
+                pointsEarned: item.points_earned,
+                createdAt: item.created_at,
+                rolePlaced: item.role_placed as UserRole,
+                isOfflineCreated: item.is_offline_created
+              }));
+            }
+
+            let mappedPromotions = INITIAL_PROMOTIONS;
+            if (dbPromotions && dbPromotions.length > 0) {
+              mappedPromotions = dbPromotions.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                content: item.content,
+                code: item.code,
+                discountPercent: item.discount_percent,
+                active: item.active,
+                expiryDate: item.expiry_date
+              }));
+            }
+
+            let mappedSecurity: SecurityAuditLog[] = [];
+            if (dbSecurity && dbSecurity.length > 0) {
+              mappedSecurity = dbSecurity.map((item: any) => ({
+                id: item.id,
+                timestamp: item.timestamp,
+                userId: item.user_id,
+                role: item.role as UserRole,
+                action: item.action,
+                details: item.details,
+                ipAddress: item.ip_address,
+                integrityVerified: item.integrity_verified
+              }));
+            }
+
+            // Sync with local Storage (encrypted) as cache/backup
+            saveItemAndSign(KEYS.INGREDIENTS, mappedIngredients);
+            saveItemAndSign(KEYS.MENU, mappedMenu);
+            saveItemAndSign(KEYS.CUSTOMERS, mappedCustomers);
+            saveItemAndSign(KEYS.ORDERS, mappedOrders);
+            saveItemAndSign(KEYS.PROMOTIONS, mappedPromotions);
+            saveItemAndSign(KEYS.SECURITY, mappedSecurity);
+
+            setIngredients(mappedIngredients);
+            setMenu(mappedMenu);
+            setCustomers(mappedCustomers);
+            setOrders(mappedOrders);
+            setPromotions(mappedPromotions);
+            setSecurityLogs(mappedSecurity);
+
+            const cachedQueue = localStorage.getItem(KEYS.QUEUE);
+            if (cachedQueue) {
+              setOfflineQueue(JSON.parse(cachedQueue));
+            } else {
+              localStorage.setItem(KEYS.QUEUE, JSON.stringify([]));
+              setOfflineQueue([]);
+            }
+            return; // Load success!
+          } else {
+            console.error("Error fetching data from Supabase, using local fallback.", { ingError, menuError, custError, ordError, promoError, secError });
+          }
+        } catch (dbErr) {
+          console.error("Supabase connection exception, using local fallback.", dbErr);
+        }
+      }
+
+      // LOCAL FALLBACK
       const integrityCheck = verifyIntegrity();
       if (!integrityCheck.ok) {
         setIsTampered(true);
         setTamperMessage(integrityCheck.error || 'Xác thực chữ ký dữ liệu thất bại.');
-        loadFallbackMockState(); // Fallback to memory but state tampering mode
+        loadFallbackMockState();
         return;
       }
 
@@ -306,6 +559,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const updatedLogs = [newLog, ...prev].slice(0, 100); // Max 100 logs
       saveItemAndSign(KEYS.SECURITY, updatedLogs);
+
+      // Write to Supabase if online
+      if (supabase && !isOffline) {
+        supabase.from('security_logs').insert([{
+          id: newLog.id,
+          timestamp: newLog.timestamp,
+          user_id: newLog.userId,
+          role: newLog.role,
+          action: newLog.action,
+          details: newLog.details,
+          ip_address: newLog.ipAddress,
+          integrity_verified: newLog.integrityVerified
+        }]).then(({ error }) => {
+          if (error) console.error("Error inserting security log to Supabase:", error);
+        });
+      }
+
       return updatedLogs;
     });
   };
@@ -350,7 +620,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Syncing offline actions
-  const syncOfflineQueue = () => {
+  const syncOfflineQueue = async () => {
     const queueData = localStorage.getItem(KEYS.QUEUE);
     if (!queueData) return;
     const actions: OfflineAction[] = JSON.parse(queueData);
@@ -358,17 +628,91 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     addSystemAuditLog('SYNC_START', `Bắt đầu đồng bộ hóa ${actions.length} giao dịch ngoại tuyến lên Cloud...`);
     
-    // Process actions and update states
-    actions.forEach(act => {
-      if (act.type === 'PLACE_ORDER') {
-        // Order is already in local list, but we log the cloud affirmation
-        addSystemAuditLog('SYNC_ORDER', `Đồng bộ đơn hàng ${act.payload.id} thành công lên máy chủ trung tâm.`);
-      } else if (act.type === 'UPDATE_STOCK') {
-        addSystemAuditLog('SYNC_STOCK', `Cập nhật bổ sung kho từ xa thành công.`);
-      } else if (act.type === 'REGISTER_CUSTOMER') {
-        addSystemAuditLog('SYNC_CUSTOMER', `Đồng bộ thành viên mới: ${act.payload.name} (${act.payload.phone}).`);
+    if (supabase) {
+      try {
+        for (const act of actions) {
+          if (act.type === 'PLACE_ORDER') {
+            const ordId = act.payload.id;
+            const fullOrder = orders.find(o => o.id === ordId);
+            if (fullOrder) {
+              await supabase.from('orders').insert({
+                id: fullOrder.id,
+                customer_phone: fullOrder.customerPhone,
+                customer_name: fullOrder.customerName,
+                items: fullOrder.items,
+                subtotal: fullOrder.subtotal,
+                discount: fullOrder.discount,
+                total: fullOrder.total,
+                payment_method: fullOrder.paymentMethod,
+                payment_status: fullOrder.paymentStatus,
+                status: fullOrder.status,
+                points_earned: fullOrder.pointsEarned,
+                created_at: fullOrder.createdAt,
+                role_placed: fullOrder.rolePlaced,
+                is_offline_created: true
+              });
+
+              // Sync ingredients stock
+              const ingUpdates = ingredients.map(ing => ({
+                id: ing.id,
+                name: ing.name,
+                current_stock: ing.currentStock,
+                min_stock: ing.minStock,
+                unit: ing.unit,
+                unit_cost: ing.unitCost
+              }));
+              await supabase.from('ingredients').upsert(ingUpdates);
+
+              // Sync customer points
+              if (fullOrder.customerPhone) {
+                const cust = customers.find(c => c.phone === fullOrder.customerPhone);
+                if (cust) {
+                  await supabase.from('customers').upsert({
+                    phone: cust.phone,
+                    name: cust.name,
+                    email: cust.email,
+                    points: cust.points,
+                    tier: cust.tier,
+                    total_spent: cust.totalSpent,
+                    created_at: cust.createdAt
+                  });
+                }
+              }
+            }
+            addSystemAuditLog('SYNC_ORDER', `Đồng bộ đơn hàng ${act.payload.id} thành công lên máy chủ trung tâm.`);
+          } else if (act.type === 'UPDATE_STOCK') {
+            const ingUpdates = ingredients.map(ing => ({
+              id: ing.id,
+              name: ing.name,
+              current_stock: ing.currentStock,
+              min_stock: ing.minStock,
+              unit: ing.unit,
+              unit_cost: ing.unitCost
+            }));
+            await supabase.from('ingredients').upsert(ingUpdates);
+            addSystemAuditLog('SYNC_STOCK', `Cập nhật bổ sung kho từ xa thành công.`);
+          } else if (act.type === 'REGISTER_CUSTOMER') {
+            const cust = customers.find(c => c.phone === act.payload.phone);
+            if (cust) {
+              await supabase.from('customers').insert({
+                phone: cust.phone,
+                name: cust.name,
+                email: cust.email,
+                points: cust.points,
+                tier: cust.tier,
+                total_spent: cust.totalSpent,
+                created_at: cust.createdAt
+              });
+            }
+            addSystemAuditLog('SYNC_CUSTOMER', `Đồng bộ thành viên mới: ${act.payload.name} (${act.payload.phone}).`);
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi đồng bộ hàng đợi ngoại tuyến lên Supabase:", err);
+        addSystemAuditLog('SYNC_ERROR', `Đồng bộ thất bại: ${err instanceof Error ? err.message : String(err)}`, 'error');
+        return;
       }
-    });
+    }
 
     // Clear queue
     localStorage.setItem(KEYS.QUEUE, JSON.stringify([]));
@@ -386,11 +730,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   ): Order => {
     const orderId = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
     
-    // Points earned logic: 1 point per 10k final total VND (adjusted by Tier modifier)
     const finalTotal = subtotal - discount;
     let pointsEarned = Math.floor(finalTotal / 10000);
     
-    // Tier points multiplier
     if (loggedInCustomer) {
       if (loggedInCustomer.tier === MembershipTier.SILVER) pointsEarned = Math.floor(pointsEarned * 1.05);
       if (loggedInCustomer.tier === MembershipTier.GOLD) pointsEarned = Math.floor(pointsEarned * 1.10);
@@ -406,7 +748,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       discount,
       total: finalTotal,
       paymentMethod,
-      paymentStatus: paymentMethod === PaymentMethod.ONLINE_QR ? PaymentStatus.PAID : PaymentStatus.PENDING, // Online auto-verify
+      paymentStatus: paymentMethod === PaymentMethod.ONLINE_QR ? PaymentStatus.PAID : PaymentStatus.PENDING,
       status: OrderStatus.PENDING,
       pointsEarned: loggedInCustomer ? pointsEarned : 0,
       createdAt: new Date().toISOString(),
@@ -414,7 +756,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isOfflineCreated: isOffline
     };
 
-    // 1. UPDATE INVENTORY (Deduct ingredients based on recipes)
+    // 1. UPDATE INVENTORY
     let updatedIngredients = [...ingredients];
     orderItems.forEach((item: any) => {
       const menuItem = menu.find(m => m.id === item.menuItemId);
@@ -422,7 +764,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         menuItem.recipe.forEach(recipeItem => {
           const ingredient = updatedIngredients.find(ing => ing.id === recipeItem.ingredientId);
           if (ingredient) {
-            // Amount * quantity consumed
             ingredient.currentStock = Math.max(0, ingredient.currentStock - (recipeItem.amount * item.quantity));
           }
         });
@@ -431,14 +772,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIngredients(updatedIngredients);
     saveItemAndSign(KEYS.INGREDIENTS, updatedIngredients);
 
-    // 2. UPDATE LOYALTY POINTS (If logged in customer)
+    if (supabase && !isOffline) {
+      const ingUpdates = updatedIngredients.map(ing => ({
+        id: ing.id,
+        name: ing.name,
+        current_stock: ing.currentStock,
+        min_stock: ing.minStock,
+        unit: ing.unit,
+        unit_cost: ing.unitCost
+      }));
+      supabase.from('ingredients').upsert(ingUpdates).then(({ error }) => {
+        if (error) console.error("Error upserting ingredients on createOrder:", error);
+      });
+    }
+
+    // 2. UPDATE LOYALTY POINTS
+    let updatedCustomers = [...customers];
     if (loggedInCustomer) {
-      const updatedCustomers = customers.map(c => {
+      updatedCustomers = customers.map(c => {
         if (c.phone === loggedInCustomer.phone) {
           const newPoints = c.points + pointsEarned;
           const newTotalSpent = c.totalSpent + finalTotal;
           
-          // Re-evaluate tier
           let newTier = MembershipTier.BRONZE;
           if (newPoints >= 500) newTier = MembershipTier.PLATINUM;
           else if (newPoints >= 200) newTier = MembershipTier.GOLD;
@@ -451,7 +806,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             tier: newTier
           };
           
-          // Sync current session
           setLoggedInCustomer(updatedC);
           return updatedC;
         }
@@ -459,12 +813,50 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       setCustomers(updatedCustomers);
       saveItemAndSign(KEYS.CUSTOMERS, updatedCustomers);
+
+      if (supabase && !isOffline) {
+        const targetCust = updatedCustomers.find(c => c.phone === loggedInCustomer.phone);
+        if (targetCust) {
+          supabase.from('customers').upsert({
+            phone: targetCust.phone,
+            name: targetCust.name,
+            email: targetCust.email,
+            points: targetCust.points,
+            tier: targetCust.tier,
+            total_spent: targetCust.totalSpent,
+            created_at: targetCust.createdAt
+          }).then(({ error }) => {
+            if (error) console.error("Error upserting customer on createOrder:", error);
+          });
+        }
+      }
     }
 
     // 3. PERSIST ORDER
     const updatedOrders = [newOrder, ...orders];
     setOrders(updatedOrders);
     saveItemAndSign(KEYS.ORDERS, updatedOrders);
+
+    if (supabase && !isOffline) {
+      supabase.from('orders').insert({
+        id: newOrder.id,
+        customer_phone: newOrder.customerPhone,
+        customer_name: newOrder.customerName,
+        items: newOrder.items,
+        subtotal: newOrder.subtotal,
+        discount: newOrder.discount,
+        total: newOrder.total,
+        payment_method: newOrder.paymentMethod,
+        payment_status: newOrder.paymentStatus,
+        status: newOrder.status,
+        points_earned: newOrder.pointsEarned,
+        created_at: newOrder.createdAt,
+        role_placed: newOrder.rolePlaced,
+        is_offline_created: newOrder.isOfflineCreated || false
+      }).then(({ error }) => {
+        if (error) console.error("Error inserting order to Supabase:", error);
+      });
+    }
 
     // 4. HANDLE OFFLINE QUEUE
     if (isOffline) {
@@ -513,13 +905,38 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
           setIngredients(restoredIngredients);
           saveItemAndSign(KEYS.INGREDIENTS, restoredIngredients);
+
+          if (supabase && !isOffline) {
+            const ingUpdates = restoredIngredients.map(ing => ({
+              id: ing.id,
+              name: ing.name,
+              current_stock: ing.currentStock,
+              min_stock: ing.minStock,
+              unit: ing.unit,
+              unit_cost: ing.unitCost
+            }));
+            supabase.from('ingredients').upsert(ingUpdates).then(({ error }) => {
+              if (error) console.error("Error upserting ingredients stock on cancel:", error);
+            });
+          }
         }
         
-        return {
+        const updatedOrder = {
           ...ord,
           status: newStatus,
           paymentStatus
         };
+
+        if (supabase && !isOffline) {
+          supabase.from('orders').update({
+            status: updatedOrder.status,
+            payment_status: updatedOrder.paymentStatus
+          }).eq('id', orderId).then(({ error }) => {
+            if (error) console.error("Error updating order status on Supabase:", error);
+          });
+        }
+
+        return updatedOrder;
       }
       return ord;
     });
@@ -536,10 +953,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const reimportStock = (ingredientId: string, amount: number) => {
     const updated = ingredients.map(ing => {
       if (ing.id === ingredientId) {
-        return {
+        const updatedIng = {
           ...ing,
           currentStock: ing.currentStock + amount
         };
+
+        if (supabase && !isOffline) {
+          supabase.from('ingredients').update({
+            current_stock: updatedIng.currentStock
+          }).eq('id', ingredientId).then(({ error }) => {
+            if (error) console.error("Error updating stock on Supabase:", error);
+          });
+        }
+
+        return updatedIng;
       }
       return ing;
     });
@@ -576,7 +1003,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       phone: cleanedPhone,
       name: name.trim(),
       email: email ? email.trim() : undefined,
-      points: 10, // Giấy chứng nhận chào mừng thành viên mới 10đ
+      points: 10,
       tier: MembershipTier.BRONZE,
       totalSpent: 0,
       createdAt: new Date().toISOString()
@@ -586,8 +1013,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCustomers(updated);
     saveItemAndSign(KEYS.CUSTOMERS, updated);
 
-    // Auto login immediately
     setLoggedInCustomer(newCust);
+
+    if (supabase && !isOffline) {
+      supabase.from('customers').insert([{
+        phone: newCust.phone,
+        name: newCust.name,
+        email: newCust.email,
+        points: newCust.points,
+        tier: newCust.tier,
+        total_spent: newCust.totalSpent,
+        created_at: newCust.createdAt
+      }]).then(({ error }) => {
+        if (error) console.error("Error registering customer on Supabase:", error);
+      });
+    }
 
     addSystemAuditLog(
       'MEMBER_REGISTER', 
@@ -618,6 +1058,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updated = [newPromo, ...promotions];
     setPromotions(updated);
     saveItemAndSign(KEYS.PROMOTIONS, updated);
+
+    if (supabase && !isOffline) {
+      supabase.from('promotions').insert([{
+        id: newPromo.id,
+        title: newPromo.title,
+        content: newPromo.content,
+        code: newPromo.code,
+        discount_percent: newPromo.discountPercent,
+        active: newPromo.active,
+        expiry_date: newPromo.expiryDate
+      }]).then(({ error }) => {
+        if (error) console.error("Error inserting promotion to Supabase:", error);
+      });
+    }
+
     addSystemAuditLog('PROMO_ADD', `Tạo thông báo khuyến mãi mới: ${newPromo.title} [Mã: ${newPromo.code}]`);
   };
 
@@ -626,6 +1081,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updated = menu.map(item => item.id === updatedItem.id ? updatedItem : item);
     setMenu(updated);
     saveItemAndSign(KEYS.MENU, updated);
+
+    if (supabase && !isOffline) {
+      supabase.from('menu').update({
+        name: updatedItem.name,
+        price: updatedItem.price,
+        category: updatedItem.category,
+        image_url: updatedItem.imageUrl,
+        recipe: updatedItem.recipe,
+        available: updatedItem.available,
+        description: updatedItem.description
+      }).eq('id', updatedItem.id).then(({ error }) => {
+        if (error) console.error("Error updating menu item on Supabase:", error);
+      });
+    }
+
     addSystemAuditLog('MENU_EDIT', `Cập nhật thông tin món: ${updatedItem.name} [Mã: ${updatedItem.id}]`);
   };
 
@@ -637,6 +1107,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updated = [...menu, newItem];
     setMenu(updated);
     saveItemAndSign(KEYS.MENU, updated);
+
+    if (supabase && !isOffline) {
+      supabase.from('menu').insert([{
+        id: newItem.id,
+        name: newItem.name,
+        price: newItem.price,
+        category: newItem.category,
+        image_url: newItem.imageUrl,
+        recipe: newItem.recipe,
+        available: newItem.available,
+        description: newItem.description
+      }]).then(({ error }) => {
+        if (error) console.error("Error inserting menu item to Supabase:", error);
+      });
+    }
+
     addSystemAuditLog('MENU_ADD', `Thêm món mới vào thực đơn: ${newItem.name} [Giá: ${newItem.price.toLocaleString()}đ]`);
   };
 
@@ -646,14 +1132,19 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const updated = menu.filter(item => item.id !== id);
     setMenu(updated);
     saveItemAndSign(KEYS.MENU, updated);
+
+    if (supabase && !isOffline) {
+      supabase.from('menu').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error("Error deleting menu item from Supabase:", error);
+      });
+    }
+
     addSystemAuditLog('MENU_DELETE', `Xóa món khỏi thực đơn: ${itemToDelete.name} [Mã: ${id}]`);
   };
 
   // Security Simulation Tools
   const triggerTamperDemo = () => {
-    // Maliciously tamper with customer's points inside localstorage bypass encryption verification
     localStorage.setItem(KEYS.CUSTOMERS, 'MALICIOUS_TAMPERED_TEXT_X_100_POINTS');
-    // Compute or don't compute hash, it mismatch!
     
     addSystemAuditLog(
       'DATABASE_BREACH_SIMULATED', 
@@ -661,12 +1152,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       'error'
     );
     
-    // Rerun load to trigger warning
     loadDatabase();
   };
 
   const restoreCleanDatabase = () => {
-    // Reset back to legitimate records
     saveItemAndSign(KEYS.INGREDIENTS, INITIAL_INGREDIENTS);
     saveItemAndSign(KEYS.MENU, INITIAL_MENU);
     saveItemAndSign(KEYS.CUSTOMERS, INITIAL_CUSTOMERS);
@@ -687,10 +1176,27 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     setIsTampered(false);
     setTamperMessage('');
-    
-    // Reboot states
-    loadDatabase();
+
+    if (supabase && !isOffline) {
+      Promise.all([
+        supabase.from('orders').delete().neq('id', ''),
+        supabase.from('ingredients').delete().neq('id', ''),
+        supabase.from('menu').delete().neq('id', ''),
+        supabase.from('customers').delete().neq('phone', ''),
+        supabase.from('promotions').delete().neq('id', ''),
+        supabase.from('security_logs').delete().neq('id', '')
+      ]).then(() => {
+        populateSupabaseDefaults().then(() => {
+          loadDatabase();
+        });
+      }).catch(err => {
+        console.error("Error wiping Supabase on restore:", err);
+      });
+    } else {
+      loadDatabase();
+    }
   };
+
 
   return (
     <StoreContext.Provider value={{

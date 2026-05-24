@@ -11,8 +11,61 @@ import {
   TrendingUp, Layers, DollarSign, BatteryWarning, RefreshCw, PlusCircle, 
   ShieldAlert, ShieldCheck, Database, Ban, CheckCircle, Package, ArrowUpRight, FileText,
   Settings, Edit2, Trash2, Eye, EyeOff, Save, Check, X, Coffee,
-  Sparkles, Download, Upload
+  Sparkles, Download, Upload, Camera
 } from 'lucide-react';
+import { supabase } from '../utils/supabase';
+
+// Helper utility to compress images on the client side using HTML5 Canvas
+const compressImage = (file: File, maxWidth = 400, maxHeight = 400): Promise<{ blob: Blob; dataUrl: string }> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Không thể khởi tạo canvas 2D'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve({ blob, dataUrl });
+          } else {
+            reject(new Error('Lỗi chuyển đổi Blob'));
+          }
+        }, 'image/jpeg', 0.7);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
 
 
 export const AdminPanel: React.FC = () => {
@@ -183,6 +236,75 @@ export const AdminPanel: React.FC = () => {
   const [formRecipe, setFormRecipe] = useState<{ ingredientId: string; amount: number }[]>([]);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Image Uploading / Camera states
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'compressing' | 'uploading' | 'success' | 'error'>('idle');
+  const [uploadMessage, setUploadMessage] = useState('');
+  const [showManualUrl, setShowManualUrl] = useState(false);
+
+  // Handler for mobile camera or file image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus('compressing');
+    setUploadMessage('Đang xử lý & nén ảnh bằng Canvas...');
+
+    try {
+      // 1. Compress image client-side to very lightweight size (max 400x400)
+      const { blob, dataUrl } = await compressImage(file, 400, 400);
+      
+      // Determine the item ID to make file name unique
+      const itemId = editingItem?.id || `new_${Date.now()}`;
+      const fileName = `drink_${itemId}.jpg`;
+
+      // 2. If Supabase is online and initialized, attempt to upload to storage
+      if (supabase) {
+        setUploadStatus('uploading');
+        setUploadMessage('Đang đồng bộ ảnh lên hệ thống đám mây (Storage)...');
+        
+        const { data, error } = await supabase.storage
+          .from('menu-images')
+          .upload(fileName, blob, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (error) {
+          console.warn("Lỗi tải lên Supabase Storage, chuyển sang Base64 fallback:", error);
+          // Fallback to Base64
+          setFormImage(dataUrl);
+          setUploadStatus('success');
+          setUploadMessage('Lưu trực tiếp vào CSDL tối ưu thành công (Base64 Fallback)!');
+        } else {
+          // Get public URL
+          const { data: publicUrlData } = supabase.storage
+            .from('menu-images')
+            .getPublicUrl(fileName);
+
+          if (publicUrlData?.publicUrl) {
+            setFormImage(publicUrlData.publicUrl);
+            setUploadStatus('success');
+            setUploadMessage('Đã tải lên Cloud & tối ưu dung lượng thành công!');
+          } else {
+            // Fallback to Base64
+            setFormImage(dataUrl);
+            setUploadStatus('success');
+            setUploadMessage('Lưu trực tiếp vào CSDL tối ưu thành công (Base64 Fallback)!');
+          }
+        }
+      } else {
+        // Local mode fallback to Base64
+        setFormImage(dataUrl);
+        setUploadStatus('success');
+        setUploadMessage('Đã nén & lưu vào bộ nhớ cục bộ thành công (Base64)!');
+      }
+    } catch (err: any) {
+      console.error("Lỗi trong quá trình xử lý ảnh:", err);
+      setUploadStatus('error');
+      setUploadMessage(`Lỗi: ${err.message || 'Không thể nén ảnh'}`);
+    }
+  };
+
   // Auto-dismiss notification after 4000ms
   React.useEffect(() => {
     if (notification) {
@@ -212,6 +334,9 @@ export const AdminPanel: React.FC = () => {
     setFormImage(item.imageUrl || '');
     setFormDesc(item.description || '');
     setFormRecipe(item.recipe || []);
+    setUploadStatus('idle');
+    setUploadMessage('');
+    setShowManualUrl(false);
   };
 
   const startAdd = () => {
@@ -225,6 +350,9 @@ export const AdminPanel: React.FC = () => {
     setFormImage('https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&q=80&w=400');
     setFormDesc('');
     setFormRecipe([]);
+    setUploadStatus('idle');
+    setUploadMessage('');
+    setShowManualUrl(false);
   };
 
   const handleSaveMenu = (e: React.FormEvent) => {
@@ -946,28 +1074,116 @@ export const AdminPanel: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Image URL & Preview */}
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-slate-700">Đường dẫn ảnh minh họa:</label>
-                    <input
-                      id="menu-form-image"
-                      type="text"
-                      value={formImage}
-                      onChange={(e) => setFormImage(e.target.value)}
-                      placeholder="Không bắt buộc hoặc chèn đường dẫn hình ảnh..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                    {formImage && (
-                      <div className="pt-2 flex items-center gap-3">
-                        <img 
-                          src={formImage} 
-                          alt="Xem trước" 
-                          className="w-14 h-14 bg-slate-100 rounded-lg object-cover border"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&q=80&w=400';
+                  {/* Image Upload & Preview Block with Camera Support */}
+                  <div className="space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-xs font-bold text-slate-700">Hình ảnh ly nước thực tế:</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowManualUrl(!showManualUrl)}
+                        className="text-[10px] text-emerald-700 font-semibold hover:underline cursor-pointer"
+                      >
+                        {showManualUrl ? '▲ Ẩn nhập URL' : '▼ Nhập URL ảnh thủ công'}
+                      </button>
+                    </div>
+
+                    {showManualUrl ? (
+                      <div className="space-y-1 bg-slate-50/50 p-2.5 rounded-xl border border-slate-150 transition animate-slide-in-up">
+                        <label className="block text-[10px] font-bold text-slate-500">Nhập đường dẫn URL ảnh mạng:</label>
+                        <input
+                          id="menu-form-image"
+                          type="text"
+                          value={formImage}
+                          onChange={(e) => {
+                            setFormImage(e.target.value);
+                            setUploadStatus('idle');
+                            setUploadMessage('');
                           }}
+                          placeholder="Nhập đường dẫn liên kết hình ảnh (VD: Unsplash)..."
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         />
-                        <span className="text-[10px] text-slate-400">Xem trước đồ uống</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {/* Premium Drag and Drop / Tap to upload Zone */}
+                        <div 
+                          className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 relative overflow-hidden group ${
+                            uploadStatus === 'compressing' || uploadStatus === 'uploading'
+                              ? 'border-amber-400 bg-amber-50/20'
+                              : uploadStatus === 'success'
+                              ? 'border-emerald-500 bg-emerald-50/15'
+                              : 'border-slate-200 bg-slate-50/40 hover:bg-slate-50 hover:border-[#8FB9A8]'
+                          }`}
+                          onClick={() => document.getElementById('menu-image-file-input')?.click()}
+                        >
+                          <input
+                            id="menu-image-file-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+
+                          {/* Preview / Overlay Image */}
+                          {formImage && uploadStatus !== 'compressing' && uploadStatus !== 'uploading' ? (
+                            <div className="relative w-20 h-20 rounded-xl overflow-hidden border shadow-xs group-hover:scale-105 transition duration-300">
+                              <img 
+                                src={formImage} 
+                                alt="Thực tế ly nước" 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?auto=format&fit=crop&q=80&w=400';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                <Camera className="w-5 h-5 text-white animate-bounce" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={`p-3 rounded-full ${
+                              uploadStatus === 'compressing' || uploadStatus === 'uploading'
+                                ? 'bg-amber-100 text-amber-700 animate-pulse'
+                                : 'bg-[#8FB9A8]/10 text-[#7DA897]'
+                            }`}>
+                              <Camera className="w-5 h-5" />
+                            </div>
+                          )}
+
+                          {/* Message / Status */}
+                          <div className="space-y-0.5">
+                            <span className="block text-xs font-bold text-slate-800">
+                              {uploadStatus === 'compressing' && 'Đang nén ảnh bằng Canvas...'}
+                              {uploadStatus === 'uploading' && 'Đang truyền đồng bộ ảnh lên Cloud...'}
+                              {uploadStatus === 'success' && 'Nén & Tải ảnh thành công!'}
+                              {uploadStatus === 'error' && 'Gặp lỗi khi xử lý tệp!'}
+                              {uploadStatus === 'idle' && (formImage ? 'Chụp ảnh khác hoặc Chọn tệp mới' : 'Chụp ảnh ly nước hoặc Chọn tệp')}
+                            </span>
+                            <span className="block text-[10px] text-slate-400 leading-normal max-w-[250px] mx-auto">
+                              {uploadStatus === 'idle' && 'Bấm để chụp trực tiếp từ camera điện thoại của bạn hoặc chọn từ thư viện ảnh.'}
+                              {uploadStatus !== 'idle' && uploadMessage}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Reset Photo option */}
+                        {formImage && (
+                          <div className="flex justify-between items-center text-[10.5px] px-1">
+                            <span className="text-slate-400 font-mono truncate max-w-[200px]" title={formImage}>
+                              Nguồn: {formImage.startsWith('data:image') ? 'Base64 (Lưu trong CSDL)' : 'Đám mây Storage'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormImage('');
+                                setUploadStatus('idle');
+                                setUploadMessage('');
+                              }}
+                              className="text-rose-600 hover:text-rose-700 font-bold hover:underline cursor-pointer"
+                            >
+                              Xóa ảnh ly nước
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

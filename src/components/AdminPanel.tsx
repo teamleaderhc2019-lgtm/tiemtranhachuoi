@@ -337,6 +337,18 @@ export const AdminPanel: React.FC = () => {
     setUploadStatus('idle');
     setUploadMessage('');
     setShowManualUrl(false);
+
+    // Automatically smooth-scroll to editor and focus on mobile devices
+    setTimeout(() => {
+      const element = document.getElementById('menu-editor-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      const input = document.getElementById('menu-form-name');
+      if (input) {
+        input.focus();
+      }
+    }, 150);
   };
 
   const startAdd = () => {
@@ -353,6 +365,18 @@ export const AdminPanel: React.FC = () => {
     setUploadStatus('idle');
     setUploadMessage('');
     setShowManualUrl(false);
+
+    // Automatically smooth-scroll to editor and focus on mobile devices
+    setTimeout(() => {
+      const element = document.getElementById('menu-editor-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      const input = document.getElementById('menu-form-name');
+      if (input) {
+        input.focus();
+      }
+    }, 150);
   };
 
   const handleSaveMenu = (e: React.FormEvent) => {
@@ -983,7 +1007,7 @@ export const AdminPanel: React.FC = () => {
           </div>
 
           {/* RIGHT PANEL: EDITOR COMPOSER */}
-          <div className="xl:col-span-5">
+          <div id="menu-editor-section" className="xl:col-span-5 scroll-mt-6">
             <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-xs">
               {editingItem || isAddingNew ? (
                 <form onSubmit={handleSaveMenu} className="space-y-4">

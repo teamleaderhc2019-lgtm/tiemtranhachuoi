@@ -1,0 +1,6 @@
+{
+  "name": "Quản Lý Quán Trà Sữa",
+  "description": "Hệ thống quản lý quán trà sữa nhỏ có đặt món trực tuyến, tích điểm thành viên, theo dõi doanh thu, báo cáo chi phí nguyên liệu, quản lý kho tự động và hỗ trợ chế độ ngoại tuyến.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

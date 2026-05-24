@@ -15,6 +15,39 @@ import {
 } from 'lucide-react';
 
 
+const MenuImage: React.FC<{ src: string; alt: string; category: string; className?: string }> = ({ src, alt, category, className = "w-full h-full object-cover" }) => {
+  const [hasError, setHasError] = React.useState(false);
+
+  const getGradient = () => {
+    if (category.includes('Trái Cây')) {
+      return 'from-orange-400 to-rose-400';
+    }
+    if (category.includes('Trà Sữa')) {
+      return 'from-amber-500/80 to-amber-600';
+    }
+    return 'from-emerald-500/80 to-emerald-600';
+  };
+
+  if (hasError || !src) {
+    return (
+      <div className={`w-full h-full bg-gradient-to-tr ${getGradient()} flex flex-col items-center justify-center p-2 text-center text-white relative rounded-xl border border-white/10 shadow-inner`}>
+        <span className="text-xl drop-shadow-md">🧋</span>
+        <span className="text-[7.5px] font-extrabold tracking-wider uppercase mt-1 truncate w-full drop-shadow-xs">{alt}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={src} 
+      alt={alt} 
+      onError={() => setHasError(true)}
+      className={`${className} transition duration-500`}
+      referrerPolicy="no-referrer"
+    />
+  );
+};
+
 export const CustomerPanel: React.FC = () => {
   const { 
     menu, promotions, loggedInCustomer, loginCustomer, logoutCustomer, 
@@ -540,10 +573,10 @@ export const CustomerPanel: React.FC = () => {
           {aiMatchResult && !aiMatchLoading && (
             <div className="p-4 bg-white/80 backdrop-blur-md border border-[#8FB9A8]/30 rounded-2xl shadow-sm animate-slide-in-up flex flex-col sm:flex-row items-center gap-4">
               <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-slate-100 border relative">
-                <img 
+                <MenuImage 
                   src={aiMatchResult.menuItem.imageUrl} 
                   alt={aiMatchResult.menuItem.name} 
-                  className="w-full h-full object-cover"
+                  category={aiMatchResult.menuItem.category}
                 />
               </div>
               <div className="flex-1 space-y-1 text-center sm:text-left min-w-0">
@@ -636,11 +669,11 @@ export const CustomerPanel: React.FC = () => {
               >
                 <div className="p-4.5 flex gap-4">
                   <div className="w-22 h-22 rounded-2xl overflow-hidden shrink-0 bg-slate-100 border border-slate-100/50 relative">
-                    <img 
+                    <MenuImage 
                       src={item.imageUrl} 
                       alt={item.name} 
+                      category={item.category}
                       className="w-full h-full object-cover group-hover:scale-108 transition duration-500"
-                      referrerPolicy="no-referrer"
                     />
                     <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-white/95 backdrop-blur-xs rounded-lg text-[9px] font-mono text-slate-500 font-bold shadow-3xs">
                       🧋
@@ -1035,12 +1068,13 @@ export const CustomerPanel: React.FC = () => {
             <div className="p-5 space-y-5 max-h-[75vh] overflow-y-auto">
               {/* Product header */}
               <div className="flex gap-4">
-                <img 
-                  src={customizingItem.imageUrl} 
-                  alt={customizingItem.name} 
-                  className="w-16 h-16 rounded-xl object-cover shrink-0 border"
-                  referrerPolicy="no-referrer"
-                />
+                <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border relative">
+                  <MenuImage 
+                    src={customizingItem.imageUrl} 
+                    alt={customizingItem.name} 
+                    category={customizingItem.category}
+                  />
+                </div>
                 <div>
                   <h5 className="font-semibold text-slate-800">{customizingItem.name}</h5>
                   <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{customizingItem.description}</p>

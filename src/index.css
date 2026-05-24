@@ -1,61 +1,61 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: "Outfit", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 
-  /* Clean Minimalism Color Override Map */
-  --color-slate-50: #FDFCFB;
-  --color-slate-100: #EAE7E4;
-  --color-slate-200: #EAE7E4;
-  --color-slate-300: #D8D4CE;
-  --color-slate-400: #7A7570;
-  --color-slate-500: #5C5752;
-  --color-slate-600: #423E3A;
-  --color-slate-700: #2D2D2D;
-  --color-slate-800: #2D2D2D;
-  --color-slate-900: #1C1C1C;
-  --color-slate-950: #121212;
+  /* Luxury Barista Warm Minimalist Palette */
+  --color-slate-50: #FAF8F5; /* Warm sweet milk tea cream background */
+  --color-slate-100: #F3EFE9; /* Muted light cream */
+  --color-slate-200: #E6DFD4; /* Border and card neutral */
+  --color-slate-350: #BCAE98; 
+  --color-slate-400: #938570;
+  --color-slate-500: #7A6D5A;
+  --color-slate-600: #5C5243;
+  --color-slate-750: #2C261F;
+  --color-slate-800: #2C261F; /* Deep roasted coffee bean */
+  --color-slate-900: #1B1713; /* Dark espresso black */
+  --color-slate-950: #110E0B;
 
-  --color-stone-50: #FDFCFB;
-  --color-stone-100: #EAE7E4;
-  --color-stone-200: #EAE7E4;
-  --color-stone-300: #D8D4CE;
-  --color-stone-400: #7A7570;
-  --color-stone-500: #5C5752;
-  --color-stone-600: #423E3A;
-  --color-stone-750: #2D2D2D;
+  --color-stone-50: #FAF8F5;
+  --color-stone-100: #F3EFE9;
+  --color-stone-200: #E6DFD4;
+  --color-stone-300: #D5CBB9;
+  --color-stone-400: #938570;
+  --color-stone-500: #7A6D5A;
+  --color-stone-600: #5C5243;
+  --color-stone-750: #2C261F;
 
-  /* Mint Clean Minimalism Highlight Theme */
-  --color-amber-50: #FEF6E4;
-  --color-amber-100: #F3E5AB;
-  --color-amber-200: #EAE7E4;
-  --color-amber-300: #8FB9A8;
-  --color-amber-400: #8FB9A8;
-  --color-amber-500: #8FB9A8;
-  --color-amber-600: #7DA897;
-  --color-amber-700: #8C7B2D;
-  --color-amber-800: #2D2D2D;
-  --color-amber-900: #1A1A1A;
-  --color-amber-950: #1A1A1A;
+  /* Rich Matcha Emerald Green Accents */
+  --color-amber-50: #EFF8F4;
+  --color-amber-100: #D2EFEB;
+  --color-amber-200: #B8E7D3;
+  --color-amber-300: #38A375; /* Vibrant Matcha Leaf */
+  --color-amber-400: #2E8E62;
+  --color-amber-500: #267A53; /* Deep emerald/matcha */
+  --color-amber-600: #1C5F40;
+  --color-amber-750: #C68A4C; /* Soft honey gold fallback for actual amber needs */
+  --color-amber-800: #12442D;
+  --color-amber-900: #05160E;
+  --color-amber-950: #020A06;
 
-  --color-emerald-50: #ECFDF5;
-  --color-emerald-100: #D1FAE5;
-  --color-emerald-400: #8FB9A8;
-  --color-emerald-500: #8FB9A8;
-  --color-emerald-600: #7DA897;
-  --color-emerald-700: #047857;
-  --color-emerald-800: #065F46;
-  --color-emerald-900: #064E3B;
-  --color-emerald-950: #022C22;
+  --color-emerald-50: #EFF8F4;
+  --color-emerald-100: #D2EFEB;
+  --color-emerald-400: #38A375;
+  --color-emerald-500: #267A53;
+  --color-emerald-600: #1C5F40;
+  --color-emerald-700: #12442D;
+  --color-emerald-800: #0B2B1D;
+  --color-emerald-900: #05160E;
+  --color-emerald-950: #020A06;
 }
 
 body {
-  background-color: #FDFCFB;
-  color: #2D2D2D;
+  background-color: #FAF8F5;
+  color: #2C261F;
   font-family: var(--font-sans), system-ui, sans-serif;
-  letter-spacing: -0.011em;
+  letter-spacing: -0.015em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -65,14 +65,14 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #FDFCFB;
+  background: #FAF8F5;
 }
 ::-webkit-scrollbar-thumb {
-  background: #EAE7E4;
+  background: #E6DFD4;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #D8D4CE;
+  background: #D5CBB9;
 }
 
 /* --- Thermal Receipt Print Media Layout --- */
@@ -90,7 +90,7 @@ body {
     position: absolute;
     left: 0;
     top: 0;
-    width: 76mm; /* Standard 80mm paper width minus margins */
+    width: 76mm;
     max-width: 76mm;
     margin: 0;
     padding: 0;
@@ -101,12 +101,10 @@ body {
     line-height: 1.3;
   }
 
-  /* Force display image inside print */
   #thermal-receipt-print-area img {
     display: block !important;
   }
 
-  /* Hide print buttons and layout */
   .no-print {
     display: none !important;
   }
@@ -131,7 +129,7 @@ body {
 
 @keyframes pulse-gentle {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.03); }
+  50% { opacity: 0.9; transform: scale(1.025); }
 }
 
 .animate-chat-bounce {
@@ -143,32 +141,34 @@ body {
 }
 
 .animate-pulse-gentle {
-  animation: pulse-gentle 2s infinite ease-in-out;
+  animation: pulse-gentle 2.5s infinite ease-in-out;
 }
 
 /* --- Modern Responsive Web App Utilities --- */
 .scrollbar-none {
-  -ms-overflow-style: none; /* IE/Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 .scrollbar-none::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/Webkit */
+  display: none;
 }
 
 /* Glassmorphism high-end container cards */
 .glass-panel {
-  background-color: rgba(253, 252, 251, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(234, 231, 228, 0.5);
-  box-shadow: 0 10px 30px -10px rgba(45, 45, 45, 0.03);
+  background-color: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(230, 223, 212, 0.55);
+  box-shadow: 0 10px 30px -10px rgba(44, 38, 31, 0.05);
+  border-radius: 24px;
 }
 
 .glass-panel-dark {
-  background-color: rgba(28, 28, 28, 0.9);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background-color: rgba(27, 23, 19, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
 }
 
 /* Slide-up sheet animation for bottom drawer */
@@ -187,16 +187,101 @@ body {
 
 /* Hover scales for card premium interaction */
 .hover-card-premium {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .hover-card-premium:hover {
-  transform: translateY(-4px) scale(1.015);
-  border-color: rgba(143, 185, 168, 0.6);
-  box-shadow: 0 20px 40px -15px rgba(143, 185, 168, 0.12);
+  transform: translateY(-6px);
+  border-color: rgba(38, 163, 117, 0.4);
+  box-shadow: 0 20px 40px -12px rgba(38, 163, 117, 0.12);
 }
 
 /* Button click press effect */
 .btn-press-effect:active {
   transform: scale(0.96);
   transition: transform 0.1s ease-out;
+}
+
+/* --- VIP GLOW STYLING FOR BUTTONS & HIGHLIGHTS --- */
+/* Target mint/teal theme buttons to make them absolutely gorgeous and high-end */
+[id*="add-btn-"], 
+[id*="checkout-btn"], 
+[id*="submit-auth-btn"], 
+[id*="pos-checkout-btn"],
+.bg-\[\#8FB9A8\],
+button[class*="bg-[#8FB9A8]"] {
+  background: linear-gradient(135deg, #38A375 0%, #267A53 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  border: none !important;
+  box-shadow: 0 6px 18px -4px rgba(38, 163, 117, 0.35) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+[id*="add-btn-"]:hover, 
+[id*="checkout-btn"]:hover, 
+[id*="submit-auth-btn"]:hover, 
+[id*="pos-checkout-btn"]:hover,
+.bg-\[\#8FB9A8\]:hover,
+button[class*="bg-[#8FB9A8]"]:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 10px 25px -5px rgba(38, 163, 117, 0.5) !important;
+  filter: brightness(1.05);
+}
+
+[id*="add-btn-"]:active, 
+[id*="checkout-btn"]:active, 
+[id*="submit-auth-btn"]:active, 
+[id*="pos-checkout-btn"]:active,
+.bg-\[\#8FB9A8\]:active,
+button[class*="bg-[#8FB9A8]"]:active {
+  transform: translateY(1px) scale(0.97) !important;
+  box-shadow: 0 4px 10px -2px rgba(38, 163, 117, 0.3) !important;
+}
+
+/* Category capsules styling */
+button[id*="cat-"] {
+  border: 1px solid rgba(230, 223, 212, 0.8) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 11px !important;
+  padding: 6px 16px !important;
+}
+button[id*="cat-"]:hover {
+  border-color: #38A375 !important;
+  background-color: rgba(56, 163, 117, 0.05);
+}
+
+/* Make inputs look super modern and sleek */
+input[type="text"],
+input[type="tel"],
+input[type="number"],
+input[type="search"] {
+  border: 1.5px solid rgba(230, 223, 212, 0.7) !important;
+  border-radius: 12px !important;
+  transition: all 0.25s ease;
+  font-weight: 500;
+}
+input[type="text"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus {
+  border-color: #38A375 !important;
+  box-shadow: 0 0 0 3px rgba(56, 163, 117, 0.15) !important;
+  background-color: #ffffff !important;
+}
+
+/* Premium loyalty passport styling */
+.bg-slate-900 {
+  background: linear-gradient(135deg, #1d1814 0%, #2e2620 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 15px 35px -10px rgba(27, 22, 18, 0.35) !important;
+  border-radius: 24px !important;
+}
+
+/* Float custom buttons and badges */
+.badge-premium {
+  background-color: rgba(56, 163, 117, 0.1);
+  color: #215e43;
+  font-weight: 700;
+  border: 1px solid rgba(56, 163, 117, 0.2);
 }
